@@ -13,12 +13,6 @@ const ruMapType = [
     "Границы", "Населенные пункты", "Терминалы", "Болота", "Инфраструктура", "Пляжи", "Парковки", "Церкви", "Здания", "Железные дороги", "Дороги", "Реки"
 ];
 
-const loaderColors = [
-    "#90677A", "#7e5639", "#88988a", "#9bb49f",
-    "#692819", "#6F9EB2", "#355743"
-];
-
-
 const districts = [
     "Syk", "Uhta", "Vorkuta", "Inta", "Pechora", "Sosnogorsk", 
     "UstKulom", "Kortkeros", "Sysolskii", "Koigorodskii", 
@@ -57,30 +51,6 @@ const colorSchemeNight = {
     "WaterGreen": ["#053d35","#158077", "1"]
 };
 
-const districtCenters = {
-    // Название: [[Верх][Низ]]
-    "Syk": [50.8196, 61.6688],
-    "Uhta": [53.6834, 63.5672],
-    "Vorkuta": [64.056, 67.5],
-    "Inta": [60.1356, 66.0318],
-    "Pechora": [57.2396, 65.1486],
-    "Sosnogorsk": [53.8819, 63.5926],
-    "UstKulom": [53.6908, 61.6886],
-    "Kortkeros": [52.2362, 61.8104],
-    "Sysolskii": [[50.0799, 61.3986],[49,60.7286]],
-    "Koigorodskii": [50.9962, 60.4406],
-    "Priluzsky": [50.6075, 60.2613],
-    "TroitskoPechorsk": [56.2012, 62.7085],
-    "Izhma": [53.1611, 65.0051],
-    "UstCilma": [[52.3529, 66.8228],[51.775, 64.760]],
-    "Vyktyl": [57.3158, 63.8509],
-    "Knyazhpogost": [[50.9825, 62.8741], [51.4192, 64.012]],
-    "Udorskii": [[49.4339,63.560],[50.3339,64.360]],
-    "Syktyvdinskii": [[50.2231, 61.6745], [50.8123, 62.0532], [50.9123,61.255],[50.5234,61.5863]],
-    "Usinsk": [57.5368, 65.9933],
-    "UstVym": [[50.2192, 62.312], [49.7192, 62.012]]
-};
-
 const sunIcon = `<svg width="39" height="39" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
     <image href="map/SVG/MenuButtons.svg" x="0" y="-48" width="336" height="96" />
 </svg>`;
@@ -89,6 +59,7 @@ const moonIcon = `<svg width="39" height="39" viewBox="0 0 48 48" xmlns="http://
     <image href="map/SVG/MenuButtons.svg" x="0" y="0" width="336" height="96" />
 </svg>`;
 
+const districtCenters = {};
 let districtData = {};
 let cachedData = {}; 
 let buttons = {};
@@ -193,7 +164,7 @@ themeButton.addEventListener("click", () => {
     infoBox.style.display = "none";
     applyBoxShadows();
     updateIconButtonStyles();
-    updateButtonStyles(); // Вызываем обновление стилей кнопок
+    updateButtonStyles(); 
 });
 
 function applyBoxShadows() {
@@ -265,8 +236,6 @@ function setButtonState(type, index, state) {
 
 
 function updateIconButtonStyles() {
-
-    
     const iconSize = 60;
     const scale = iconSize / 48;
 
@@ -306,11 +275,11 @@ function updateButtonStyles() {
 
         button.style.backgroundColor = isActive 
             ? (darkMode ? "rgba(33, 37, 90, 0.8)" : "#f0d3c0") 
-            : (darkMode ? '' : '');
+            : '';
 
         button.style.color = isActive 
             ? (darkMode ? "white" : "black") 
-            : (darkMode ? '' : '');
+            : '';
 
         button.style.boxShadow = isActive 
             ? (darkMode ? "4.5px 0px 0px inset rgba(0, 0, 0, 0.5)" : "4.5px 0px 0px inset #333") 
@@ -381,10 +350,11 @@ function updateProjection() {
 async function loadDistrictMaps(district, colorScheme) {
     districtData[district] = [];
     showLoader("block");
+    await new Promise(requestAnimationFrame);
     
     for (const type of mapType) {
         
-        if (type === "Buildings" && zoomTransform.k < 800) {
+        if (type === "Buildings" && zoomTransform.k < 700) {
             const cacheKey = `${district}${type}`;
             if (cachedData[cacheKey]) {
                 delete cachedData[cacheKey];
@@ -462,19 +432,25 @@ async function updateDistrictCenters() {
             districtCenters[district] = [];
         }
     }
-    console.log("districtCenters обновлён:", districtCenters);
+    // console.log("districtCenters обновлён:", districtCenters);
 }
 
-
 function isPointInPolygon(point, polygon) {
-    let [px, py] = point;
+    const [px, py] = point;
     let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        let [xi, yi] = polygon[i];
-        let [xj, yj] = polygon[j];
-        let intersect = ((yi > py) !== (yj > py)) && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+    const n = polygon.length;
+
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+        const [xi, yi] = polygon[i];
+        const [xj, yj] = polygon[j];
+
+        const intersect =
+            ((yi > py) !== (yj > py)) &&
+            (px < ((xj - xi) * (py - yi)) / (yj - yi) + xi);
+
         if (intersect) inside = !inside;
     }
+
     return inside;
 }
 
@@ -484,8 +460,7 @@ function getClosestDistrict() {
         (canvas.height / 2 - zoomTransform.y) / zoomTransform.k
     ];
     const centerGeo = projection.invert(centerScreen);
-    
-    // Если карта не сильно сдвинулась, используем кеш
+
     if (lastDistrict && lastCenterGeo) {
         let dx = Math.abs(centerGeo[0] - lastCenterGeo[0]);
         let dy = Math.abs(centerGeo[1] - lastCenterGeo[1]);
@@ -508,6 +483,7 @@ function getClosestDistrict() {
         }
         
         borders.forEach(border => {
+            if (!Array.isArray(border) || typeof border[0]?.[0] !== 'number') return;
             let districtMinDistance = Math.min(...border.filter((_, i) => i % detailFactor === 0)
                 .map(([lon, lat]) => d3.geoDistance(centerGeo, [lon, lat])));
             if (districtMinDistance < minDistance) {
@@ -523,20 +499,20 @@ function getClosestDistrict() {
 }
 
 
+
 async function render() {
     if (isRendering) return;
     isRendering = true;
 
-    await new Promise(resolve => (window.requestIdleCallback || function(cb) { 
-        setTimeout(() => cb({ timeRemaining: () => 50 }), 1); })(resolve));
+    await new Promise(requestAnimationFrame);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     ctx.translate(zoomTransform.x, zoomTransform.y);
     ctx.scale(zoomTransform.k, zoomTransform.k);
 
-    const visibleWidth = canvas.width / zoomTransform.k + 1000/zoomTransform.k;
-    const visibleHeight = canvas.height / zoomTransform.k + 1000/zoomTransform.k;
+    const visibleWidth = canvas.width / zoomTransform.k;
+    const visibleHeight = canvas.height / zoomTransform.k;
     const visibleX = -zoomTransform.x / zoomTransform.k;
     const visibleY = -zoomTransform.y / zoomTransform.k;
 
@@ -544,7 +520,7 @@ async function render() {
     ctx.rect(visibleX, visibleY, visibleWidth, visibleHeight);
     ctx.clip();
 
-    if (mapData && zoomTransform.k < 30) {
+    if (mapData && zoomTransform.k < 10) {
         ctx.globalAlpha = mapData.opacity;
         mapData.data.features.forEach(feature => {
             ctx.beginPath();
@@ -558,17 +534,15 @@ async function render() {
         canvas.style.backgroundColor = darkMode ? "#111" : "#eee";
     } else {
         canvas.style.backgroundColor = darkMode ? "#091329" : "#27543d";
-    }
 
-    if (zoomTransform.k > 10) {
         const currentDistrict = getClosestDistrict();
-
-        // Подгружаем данные только при необходимости
         if (!districtData[currentDistrict]) {
             await loadDistrictMaps(currentDistrict, darkMode ? colorSchemeNight : colorSchemeDay);
         }
 
         const layers = districtData[currentDistrict] || [];
+
+          let visiblePlaces = [];
 
         for (const layer of layers) {
             if (!layer.quadtree) continue;
@@ -576,22 +550,24 @@ async function render() {
             ctx.globalAlpha = layer.opacity;
             const isWater = layer.strokeColor === colorSchemeDay["Water"][1] || layer.strokeColor === colorSchemeNight["Water"][1];
             const isRoad = layer.strokeColor === colorSchemeDay["Roads"][1] || layer.strokeColor === colorSchemeNight["Roads"][1];
-            const alwaysVisible = layer.strokeColor === colorSchemeDay["Borders"][1] || layer.strokeColor === colorSchemeNight["Borders"][1] ||
-                      layer.fillColor === colorSchemeDay["Places"][0] || layer.fillColor === colorSchemeNight["Places"][0];
+
+            const alwaysVisible =
+                layer.strokeColor === colorSchemeDay["Borders"][1] || layer.strokeColor === colorSchemeNight["Borders"][1] ||
+                layer.fillColor === colorSchemeDay["Places"][0] || layer.fillColor === colorSchemeNight["Places"][0];
+
             layer.quadtree.visit((node, x0, y0, x1, y1) => {
                 if (!alwaysVisible && (x1 < visibleX || x0 > visibleX + visibleWidth || y1 < visibleY || y0 > visibleY + visibleHeight)) {
                     return true;
                 }
-                
+
                 if (!node.length && node.data) {
                     const feature = node.data;
-
                     ctx.beginPath();
                     path(feature);
-                    
+
                     const maxSpeed = feature.properties.maxspeed || 0;
-                    const highSpeedRoad = maxSpeed >= 21;
-                    const lowSpeedRoad = maxSpeed < 20;
+                    const highSpeed = maxSpeed >= 21;
+                    const lowSpeed = maxSpeed < 20;
 
                     let lineWidth = isWater
                         ? Math.max((feature.properties.width + 1) / zoomTransform.k, 0.0005)
@@ -603,19 +579,17 @@ async function render() {
                     ctx.strokeStyle = layer.strokeColor;
 
                     const showLine =
-                        (isWater || isRoad) && (lineWidth <= 0.005 || feature.properties.width > 5 && zoomTransform.k > 50) ||
-                        isRoad && (lowSpeedRoad && zoomTransform.k > 250 || highSpeedRoad && zoomTransform.k > 50);
+                        (isWater || isRoad) && (lineWidth <= 0.005 || (feature.properties.width > 5 && zoomTransform.k > 50)) ||
+                        (isRoad && ((lowSpeed && zoomTransform.k > 250) || (highSpeed && zoomTransform.k > 50)));
 
                     if (showLine) {
                         ctx.stroke();
-                        if (feature.properties.name && zoomTransform.k > 700) {
+                        if (feature.properties.name && zoomTransform.k > 600) {
                             addRiverLabel(feature);
                         }
                     }
 
-                    
-
-                    if (layer.fillColor !== "none"){
+                    if (layer.fillColor !== "none") {
                         ctx.stroke();
                         ctx.fillStyle = layer.fillColor;
                         ctx.fill();
@@ -624,23 +598,30 @@ async function render() {
                     if (layer.fillColor === "none" && !isWater && !isRoad) {
                         ctx.stroke();
                     }
+
+                    if (layer.fillColor === colorSchemeDay["Places"][0] || layer.fillColor === colorSchemeNight["Places"][0]) {
+                        visiblePlaces.push(feature);
+                    }
                 }
             });
         }
+
+        if (zoomTransform.k >= 10 && zoomTransform.k <= 250) {
+            ctx.globalAlpha = 1;
+            for (const feature of visiblePlaces) {
+                addPlaceLabel(feature);
+            }
+        }
     }
 
-    // Подсветка
     if (hoveredFeature) {
         ctx.globalAlpha = 1;
         const bbox = path.bounds(hoveredFeature);
         const centerX = (bbox[0][0] + bbox[1][0]) / 2;
         const centerY = (bbox[0][1] + bbox[1][1]) / 2;
 
-        const gradient = ctx.createRadialGradient(
-            centerX, centerY, 0, centerX, centerY,
-            Math.max(bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1]) * zoomTransform.k
-        );
-
+        const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY,
+            Math.max(bbox[1][0] - bbox[0][0], bbox[1][1] - bbox[0][1]) * zoomTransform.k);
         gradient.addColorStop(0.7, darkMode ? "#000" : "#EDC5AB");
         gradient.addColorStop(0, darkMode ? "#060826" : "#E7EAEF");
 
@@ -686,23 +667,23 @@ async function render() {
 function addRiverLabel(feature) {
     ctx.save();
     ctx.fillStyle = darkMode ? "#ccc" : "#FFFAF4";
-    ctx.shadowOffsetX = 2;        // Горизонтальное смещение тени
-    ctx.shadowOffsetY = 2;        // Вертикальное смещение тени
-    ctx.shadowBlur = 1;           // Размытие тени
+    ctx.shadowOffsetX = 2;        
+    ctx.shadowOffsetY = 2;        
+    ctx.shadowBlur = 1;          
     ctx.shadowColor = "rgba(0, 0, 0, 0.5)"; 
     ctx.font = `0.001em Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
-    let centroid = path.centroid(feature); // Определяем центр реки
+    let centroid = path.centroid(feature); // Определяем центр реки/дороги
     if (!centroid || centroid.length < 2) return;
 
     let coords = feature.geometry.coordinates;
     if (feature.geometry.type === "MultiLineString") {
-        coords = coords[0]; // Берём первую линию в MultiLineString
+        coords = coords[0]; 
     }
 
-    if (coords.length < 2) return; // Проверяем, есть ли хотя бы две точки
+    if (coords.length < 2) return; 
     
     let midIndex = Math.floor(coords.length / 2);
 
@@ -714,8 +695,8 @@ function addRiverLabel(feature) {
         let angle2 = Math.atan2(y3 - y2, x3 - x2);
         let avgAngle = (angle1 + angle2) / 2;
 
-        if (avgAngle > 80 || avgAngle < -80) {
-            avgAngle += 180;
+        if (avgAngle > Math.PI * 0.45 || avgAngle < -Math.PI * 0.45) {
+        avgAngle += Math.PI;
         }
         ctx.translate(centroid[0], centroid[1]); 
         ctx.rotate(avgAngle * (Math.PI / 180));
@@ -724,8 +705,8 @@ function addRiverLabel(feature) {
         
         let [x1, y1] = projection(coords[0]);
         let [x2, y2] = projection(coords[1]);
-        let angle = Math.atan2(y2 - y1, x2 - x1); // Угол наклона
-        ctx.translate(centroid[0], centroid[1]); // Перемещаем в центр
+        let angle = Math.atan2(y2 - y1, x2 - x1); 
+        ctx.translate(centroid[0], centroid[1]);
         ctx.rotate(angle);
         if (angle > 90 || angle < -90) {
             angle += 180;
@@ -735,6 +716,28 @@ function addRiverLabel(feature) {
     ctx.restore();
 }
 
+const zoomLabel = document.getElementById("zoomLabel");
+
+function updateZoomLabel(zoomLevel) {
+    document.getElementById("zoomValue").textContent = zoomLevel.toFixed(2);
+}
+
+function addPlaceLabel(feature) {
+    if (!feature.properties.name) return;
+    ctx.save();
+    ctx.fillStyle = darkMode ? "#ccc" : "#FFFAF4";
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
+    ctx.shadowBlur = 1;
+    ctx.shadowColor = "rgba(0, 0.2, 0.2, 0.9)";
+    ctx.font = `${Math.min(20 / zoomTransform.k, zoomTransform.k / 5)}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const [cx, cy] = path.centroid(feature);
+    ctx.fillText(feature.properties.name, cx, cy);
+    ctx.restore();
+}
 
 
 function capitalizeFirstLetter(str) {
@@ -742,64 +745,122 @@ function capitalizeFirstLetter(str) {
     return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function isTooBigToHighlight(feature) {
+    const [[x0, y0], [x1, y1]] = path.bounds(feature);
+
+    // Преобразуем координаты в экранные
+    const scale = zoomTransform.k;
+    const tx = zoomTransform.x;
+    const ty = zoomTransform.y;
+
+    const screenX0 = x0 * scale + tx;
+    const screenY0 = y0 * scale + ty;
+    const screenX1 = x1 * scale + tx;
+    const screenY1 = y1 * scale + ty;
+
+    const width = screenX1 - screenX0;
+    const height = screenY1 - screenY0;
+
+    const maxW = canvas.width * 0.95;
+    const maxH = canvas.height * 0.95;
+
+    return width > maxW || height > maxH;
+}
+
+
+
 canvas.addEventListener("mousemove", (event) => {
-    const { offsetX, offsetY } = event;
-    const mousePos = projection.invert([(offsetX - zoomTransform.x) / zoomTransform.k, (offsetY - zoomTransform.y) / zoomTransform.k]);
+    const { offsetX, offsetY, clientX, clientY } = event;
+    const k = zoomTransform.k;
+    const isLoaderHidden = loader.style.display === "none";
+    const mousePos = projection.invert([
+        (offsetX - zoomTransform.x) / k,
+        (offsetY - zoomTransform.y) / k
+    ]);
+
     let foundFeature = null;
-    document.body.style.cursor = loader.style.display == "none" ? "default" : "progress";
-
-    if (zoomTransform.k < 10 && loader.style.display == "none"){
-        mapData.data.features.forEach(feature => {
-            if (d3.geoContains(feature.geometry, mousePos)) {
-                foundFeature = feature;
-                document.body.style.cursor = "pointer";
-            }
-        });
-    }
-
-    if (zoomTransform.k > 10) {
-        const currentDistrict = getClosestDistrict();
-        
-        if (districtData[currentDistrict]) {
-            districtData[currentDistrict].forEach(layer => {
-                if (zoomTransform.k < 100 && layer.data && layer.data.features && (layer.fillColor === colorSchemeDay["Places"][0] || layer.fillColor === colorSchemeNight["Places"][0])) { 
-                    layer.data.features.forEach(feature => {
-                        if (d3.geoContains(feature.geometry, mousePos)) {
-                            foundFeature = feature;
-                            document.body.style.cursor = "pointer";
-                        }
-                    });
-                }
-                if (zoomTransform.k > 1000 && layer.data && layer.data.features && (layer.fillColor === colorSchemeDay["Buildings"][0] || layer.fillColor === colorSchemeNight["Buildings"][0]) || (layer.fillColor === colorSchemeDay["Church"][0] || layer.fillColor === colorSchemeNight["Church"][0]) || (layer.fillColor === colorSchemeDay["GreenPlaces"][0] || layer.fillColor === colorSchemeNight["GreenPlaces"][0]) || (layer.fillColor === colorSchemeDay["Terminals"][0] || layer.fillColor === colorSchemeNight["Terminals"][0]) ) { 
-                    layer.data.features.forEach(feature => {
-                        if (d3.geoContains(feature.geometry, mousePos)) {
-                            foundFeature = feature;
-                            document.body.style.cursor = "pointer";
-                        }
-                    });
-                }
-            });
+    document.body.style.cursor = isLoaderHidden ? "default" : "progress";
+    
+    if (isLoaderHidden && k < 10 && mapData && mapData.fillColor !== "none") {
+    for (const feature of mapData.data.features) {
+        if (d3.geoContains(feature.geometry, mousePos)) {
+            foundFeature = feature;
+            break;
         }
     }
-    
-    hoveredFeature = foundFeature;
+    }
+
+    if (isLoaderHidden && k > 10) {
+        const currentDistrict = getClosestDistrict();
+        const districtLayers = districtData[currentDistrict] || [];
+
+        for (const layer of districtLayers) {
+            if (!layer.data?.features) continue;
+
+            const fill = layer.fillColor;
+            const shouldCheck =
+                (k < 100 && ["Places"].some(type => fill === colorSchemeDay[type][0] || fill === colorSchemeNight[type][0])) ||
+                (k > 1000 && ["Buildings", "Church", "GreenPlaces", "Terminals"]
+                    .some(type => fill === colorSchemeDay[type][0] || fill === colorSchemeNight[type][0]));
+
+            if (shouldCheck) {
+                for (const feature of layer.data.features) {
+                    if (d3.geoContains(feature.geometry, mousePos)) {
+                        foundFeature = feature;
+                        break;
+                    }
+                }
+            }
+
+            if (foundFeature) break;
+        }
+    }
+
+    if (foundFeature && (zoomTransform.k <= 400 || !isTooBigToHighlight(foundFeature))) {
+        hoveredFeature = foundFeature;
+    } else {
+        hoveredFeature = null;
+    }
+    document.body.style.cursor = foundFeature ? "pointer" : document.body.style.cursor;
     render();
 
+
     if (hoveredFeature) {
-        tooltip.style.left = `${event.pageX + 20}px`;
-        tooltip.style.top = `${event.pageY - 20}px`;
-        if (zoomTransform.k <= 10){
-            tooltip.textContent = capitalizeFirstLetter(hoveredFeature.properties.Name);
-            }
-        else {
-            tooltip.textContent = capitalizeFirstLetter(hoveredFeature.properties.name)
+        const padding = 12;
+        const screenW = window.innerWidth;
+   
+
+        tooltip.textContent = k <= 10
+            ? capitalizeFirstLetter(hoveredFeature.properties.Name)
+            : capitalizeFirstLetter(hoveredFeature.properties.name);
+
+        tooltip.style.display = "block";
+        tooltip.style.visibility = "hidden";
+        tooltip.style.left = "0px";
+        tooltip.style.top = "0px";
+
+        const tooltipWidth = tooltip.offsetWidth;
+        const tooltipHeight = tooltip.offsetHeight;
+
+        let tooltipX = clientX + padding;
+        let tooltipY = clientY - tooltipHeight - padding;
+
+        if (clientX + tooltipWidth + padding > screenW) {
+            tooltipX = clientX - tooltipWidth - padding;
         }
+        if (tooltipY < 0) {
+            tooltipY = clientY + padding;
+        }
+
+        tooltip.style.left = `${tooltipX}px`;
+        tooltip.style.top = `${tooltipY}px`;
+        tooltip.style.visibility = "visible";
         tooltip.style.display = "block";
     } else {
         tooltip.style.display = "none";
-        
     }
 });
+
 
 async function fetchWikiData(wikidataID) {
     infoBox.innerHTML = `
@@ -832,7 +893,7 @@ async function fetchWikiData(wikidataID) {
 }
 
 async function fetchWikiIDfromOSM(osmID) {
-    console.log("Запрашиваем Wikidata ID для OSM ID:", osmID);
+    // console.log("Запрашиваем Wikidata ID для OSM ID:", osmID);
 
     let query = `
         [out:json];
@@ -885,7 +946,7 @@ async function fetchEntityLabel(entityID) {
 }
 
 
-// Глобальные переменные
+
 let regionsData = null;
 let availableMetrics = new Set();
 let currentTitle = '';
@@ -893,24 +954,36 @@ let currentFileName = '';
 let socialToggle = '';
 let availableFilesForRegion = [];
 
+const fileDisplayNames = {
+    "Education": "Образование",
+    "Housing": "Жильё",
+    "Paid_services": "Платные услуги населению",
+    "Population": "Население",
+    "Environment": "Охрана окружающей среды",
+    "Collective_accommodation": "Коллективные средства размещения",
+    "Public_order": "Организация охраны общественного порядка",
+    "Municipal_property": "Муниципальная собственность",
+    "Finance": "Финансовая деятельность",
+    "Residential_units": "Жилые Помещения",
+    "Budget": "Бюджет",
+    "Post_telecom": "Почтовая и телефонная связь",
+    "Agriculture": "Сельское хозяйство",
+    "Employment": "Занятость и зарплата",
+    "Culture": "Культура",
+    "Sports": "Спорт",
+    "Territory": "Территория"
+};
+
 async function getAvailableFiles() {
     try {
-        
-        const mockFiles = [
-        "Образование", "Жильё", "Платные_услуги_населению", "Население",
-        "Охрана_окружающей_среды", "Коллективные_средства_размещения", 
-        "Организация_охраны_общественного_порядка", "Муниципальная_собственность",
-        "Финансовая_деятельность", "Жилые_Помещения", "Бюджет",
-        "Почтовая_и_телефонная_связь", "Сельское_хозяйство", 
-        "Занятость_и_зарплата", "Культура", "Спорт", "Территория"
-        ];
+        const mockFiles = Object.keys(fileDisplayNames);
 
         if (availableFilesForRegion.length > 0) {
             return availableFilesForRegion;
         }
 
         return mockFiles;
-        
+
     } catch (error) {
         console.error('Ошибка получения файлов:', error);
         return [];
@@ -920,7 +993,7 @@ async function getAvailableFiles() {
 async function findFilesContainingRegionName(regionName) {
     availableFilesForRegion = [];
 
-    const files = await getAvailableFiles(); // все mock-файлы
+    const files = await getAvailableFiles(); 
     
     for (const file of files) {
         const filePath = `data/sorted/${file}.json`;
@@ -930,20 +1003,20 @@ async function findFilesContainingRegionName(regionName) {
 
             const data = await response.json();
 
-            // ❗️временная подмена глобального regionsData
+            
             const oldRegionsData = regionsData;
             regionsData = data;
-
+            // console.log("Загруженные данные:", regionsData);
             const regionData = findRegionData(regionName);
 
-            // ❗️если данные найдены — файл подходит
+            
             if (regionData) {
                 if (!availableFilesForRegion.includes(file)) {
                     availableFilesForRegion.push(file);
                 }
             }
 
-            regionsData = oldRegionsData; // восстановить
+            regionsData = oldRegionsData; 
         } catch (err) {
             console.error(`Ошибка чтения файла ${filePath}:`, err);
         }
@@ -969,7 +1042,7 @@ async function showFileListInSocialTab() {
                 <div class="file-list">
                     ${files.map(file => `
                         <div class="file-item" data-file="${file}">
-                            ${file.replace(/_/g, ' ')}
+                            ${fileDisplayNames[file] || file}
                         </div>
                     `).join('')}
                 </div>
@@ -979,11 +1052,11 @@ async function showFileListInSocialTab() {
         document.querySelectorAll('.file-item').forEach(item => {
             item.addEventListener('click', async () => {
                 currentFileName = item.getAttribute('data-file');
-                const cleanTitle = currentFileName.replace(/_/g, ' ');
-
+                const russianTitle = fileDisplayNames[currentFileName];
+                
                 const titleElement = document.querySelector('.social-tab-header h2');
                 if (titleElement) {
-                    titleElement.textContent = cleanTitle;
+                    titleElement.textContent = russianTitle;
                 }
 
                 if (await loadRegionsData()) {
@@ -1013,7 +1086,7 @@ async function loadRegionsData() {
         regionsData = await response.json();
         availableMetrics = new Set();
         
-        // Собираем все уникальные показатели
+
         Object.values(regionsData).forEach(region => {
             Object.values(region).forEach(yearData => {
                 Object.keys(yearData).forEach(metric => {
@@ -1022,7 +1095,7 @@ async function loadRegionsData() {
             });
         });
         
-        console.log(`Данные загружены из ${currentFileName}`);
+        // console.log(`Данные загружены из ${currentFileName}`);
         return true;
     } catch (error) {
         console.error('Ошибка загрузки:', error);
@@ -1030,7 +1103,7 @@ async function loadRegionsData() {
     }
 }
 
-// Функция нормализации названий регионов
+
 const normalizeRegionName = (name) => {
     return name.toLowerCase()
         .replace(/ё/g, 'е')
@@ -1039,7 +1112,7 @@ const normalizeRegionName = (name) => {
         .trim();
 };
 
-// Функция поиска данных по региону
+
 function findRegionData(regionName) {
     if (!regionsData) return null;
     
@@ -1055,20 +1128,20 @@ function findRegionData(regionName) {
         'койгородский' : ['Муниципальный район Койгородский']
     };
 
-    // Проверка специальных случаев
+    
     for (const [key, possibleNames] of Object.entries(specialCases)) {
         if (normalizedSearchName.includes(key)) {
-            // Ищем первое существующее название из возможных вариантов
+            
             for (const name of possibleNames) {
                 if (regionsData[name]) {
                     return regionsData[name];
                 }
             }
-            return null; // если ни один вариант не найден
+            return null; 
         }
     }
 
-    // Стандартный поиск по всем регионам
+
     for (const [fullName, data] of Object.entries(regionsData)) {
         const normalizedFullName = normalizeRegionName(
             fullName.replace(/Городской округ|Муниципальный район|Муниципальный округ|Город|МО/gi, '')
@@ -1099,6 +1172,7 @@ const chartColorsLight = [
     '#E74C3C'  // красный
 ];
 
+// Цвета для графиков в темной теме 
 const chartColorsDark = [
     '#F5A623', // золотисто-оранжевый
     '#8A94E3', // лавандовый
@@ -1121,35 +1195,31 @@ function getChartColors() {
 async function showSocialIndicators(regionName) {
     const socialContent = document.getElementById('socialContent');
     const backButton = document.getElementById('backButton');
-    const titleElement = document.querySelector('.social-tab-header h2');
-    if (titleElement) {
-      titleElement.textContent = `${currentFileName.replace(/_/g, ' ')}`;
-    }
     backButton.style.visibility = 'visible';
     socialContent.innerHTML = '<div>Загрузка данных...</div>';
     
     try {
-        if (!regionsData && !await loadRegionsData()) {
-            throw new Error('Не удалось загрузить данные регионов');
-        }
+        //if (!regionsData && !await loadRegionsData()) {
+          //  throw new Error('Не удалось загрузить данные');
+        //}
         const regionData = findRegionData(regionName);
     
         if (regionData) {
             const years = Object.keys(regionData).sort((a, b) => parseInt(a) - parseInt(b));
             const metrics = Array.from(availableMetrics);
     
-            // Фильтруем показатели и годы с данными
+           
             const metricsWithData = metrics.filter(metric => {
                 return years.some(year => regionData[year][metric] !== undefined);
             });
     
-            // Для каждого показателя находим годы с данными
+            
             const metricYears = {};
             metricsWithData.forEach(metric => {
                 metricYears[metric] = years.filter(year => regionData[year][metric] !== undefined);
             });
     
-            // Основная разметка
+           
             socialContent.innerHTML = `
                 <div id="dataTable" class="tab-content active">
                     <h3>${regionName}</h3>
@@ -1262,7 +1332,6 @@ async function showSocialIndicators(regionName) {
                         y: {
                             ticks: { color: '#fff' },
                             grid: { color: 'rgba(255,255,255,0.1)' },
-                            // Автоматическое определение границ
                             beginAtZero: false,
                             min: Math.floor(Math.min(...dataValues)) > 0 
                             ? Math.floor(Math.min(...dataValues) * 0.5 - 0.00001 ) 
@@ -1330,24 +1399,29 @@ async function updateInfoBoxWiki(entity, wikidataID) {
     let title = labels.ru ? labels.ru.value : labels.en ? labels.en.value : "Неизвестное место";
     let wikipediaURL = sitelinks.ruwiki ? sitelinks.ruwiki.url : sitelinks.enwiki ? sitelinks.enwiki.url : null;
 
-    // Дополнительные данные (остается без изменений)
+ 
     let instanceOfID = claims.P31 ? claims.P31[0].mainsnak.datavalue.value.id : null;
     let capitalOfID = claims.P1376 ? claims.P1376[0].mainsnak.datavalue.value.id : null;
     let postalCode = claims.P281 ? claims.P281[0].mainsnak.datavalue.value : null;
-    let population = claims.P1082 ? parseInt(claims.P1082[0].mainsnak.datavalue.value.amount) + " человек" : null;
+    let population = null;
+    if (claims.P1082?.length) {
+    const last = claims.P1082.at(-1);
+    const amount = last?.mainsnak?.datavalue?.value?.amount;
+    const date = last?.qualifiers?.P585?.[0]?.datavalue?.value?.time;
+
+    if (amount) {
+        population = parseInt(amount).toLocaleString('ru-RU') + ' человек' +
+            (date ? ` (${date.slice(1, 5)}г.)` : '');}}
+    
     let area = claims.P2046 ? parseFloat(claims.P2046[0].mainsnak.datavalue.value.amount) + " км²" : null;
     let elevation = claims.P2044 ? parseFloat(claims.P2044[0].mainsnak.datavalue.value.amount) + " м" : null;
     let inceptionDate = claims.P571 ? new Date(claims.P571[0].mainsnak.datavalue.value.time).getFullYear() : null;
-
-    // Координаты и изображения (остается без изменений)
     let coordinates = claims.P625 ? claims.P625[0].mainsnak.datavalue.value : null;
     let latLon = coordinates ? `${coordinates.latitude.toFixed(4)}, ${coordinates.longitude.toFixed(4)}` : null;
     let imageFile = claims.P18 ? claims.P18[0].mainsnak.datavalue.value : null;
     let imageUrl = imageFile ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(imageFile)}` : null;
     let flag = claims.P41 ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(claims.P41[0].mainsnak.datavalue.value)}` : null;
     let coatOfArms = claims.P94 ? `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(claims.P94[0].mainsnak.datavalue.value)}` : null;
-
-    // Получаем названия "instance of" и "capital of"
     let instanceOfTitle = instanceOfID ? await fetchEntityLabel(instanceOfID) : null;
     let capitalOfTitle = capitalOfID ? await fetchEntityLabel(capitalOfID) : null;
 
@@ -1356,7 +1430,7 @@ async function updateInfoBoxWiki(entity, wikidataID) {
 
         
     // Создаем основное содержимое
-    mainContent = `
+    let mainContent = `
         <div style="position: relative; padding: 10px;">
             <div id="showSocialButton", style="position: absolute; top: -12px; left: 0px; cursor: pointer; background: none; border-radius: 50%; padding: 5px;"">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-opacity="1">
@@ -1488,7 +1562,7 @@ canvas.addEventListener("click", async () => {
         if (zoomTransform.k > 11) {
             let osmID = hoveredFeature.properties.osm_id;
             if (osmID) {
-                fetchWikiIDfromOSM(osmID);
+                await fetchWikiIDfromOSM(osmID);
             }
         }
         
@@ -1519,11 +1593,11 @@ const zoom = d3.zoom()
     .on("zoom", (event) => {
         const prevZoom = zoomTransform.k;
         zoomTransform = event.transform;
+        updateZoomLabel(zoomTransform.k);
         
-        // Проверяем переход через границы 300 и 800
         const buildingsBoundaryCrossed = 
-            (prevZoom <= 800 && zoomTransform.k > 800) || 
-            (prevZoom > 800 && zoomTransform.k <= 800);
+            (prevZoom <= 700 && zoomTransform.k > 700) || 
+            (prevZoom > 700 && zoomTransform.k <= 700);
             
         const greenPlacesBoundaryCrossed =
             (prevZoom <= 300 && zoomTransform.k > 300) ||
@@ -1536,7 +1610,7 @@ const zoom = d3.zoom()
                     delete cachedData[key];
                 }
             });
-            // Перезагружаем текущий район
+            
             const district = getClosestDistrict();
             loadDistrictMaps(district, darkMode ? colorSchemeNight : colorSchemeDay);
         }
@@ -1562,7 +1636,6 @@ changeIconColor();
 createMapControls(mapType);
 showLoader("none")
 
-// Вызываем обновление данных
 updateDistrictCenters();
 
 

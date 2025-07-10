@@ -9,11 +9,22 @@
 <body>
     <div id="map-container">
         <canvas id="mapCanvas"></canvas>
+    
+        <div id="zoomLabel" tabindex="0">
+            Уровень зума: <span id="zoomValue">1.00</span>
+        <div id="zoomTooltip">
+            &gt; 50 - Дороги и реки<br>
+            &gt; 200 - Дороги подробно<br>
+            &gt; 300 - Инфраструктура<br>
+            &gt; 700 - Здания
+        </div>
+    </div>
+    
     </div>
     
     <svg width="39" height="39" viewBox="0 0 0 0">
     </svg>
-    <script src="https://d3js.org/d3.v7.min.js"></script> <!-- Подключаем D3.js (Основной фреймворк)-->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="map.js"></script>
     
