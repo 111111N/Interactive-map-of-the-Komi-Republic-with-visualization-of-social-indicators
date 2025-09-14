@@ -35,7 +35,7 @@ A web application for visualizing socio-economic indicators and infrastructure o
 - **Overpass API, Wikidata API** — retrieving object metadata;
 - **Vanilla JS + CSS** — custom UI (tooltips, menus, switches, icons).
 
-
+------------------------------------------------------------
 
 # Интерактивная карта Республики Коми
 
